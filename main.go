@@ -1,8 +1,9 @@
 package main
 
 import(
+	"encoding/json"
 	"fmt"
-
+    "os"
 	"github.com/gocolly/colly"
 
 )
@@ -15,13 +16,39 @@ type item struct{
 
 func main() {
 	c := colly.NewCollector(
-		colly.AllowedDomains("https://www.hepsiburada.com"),
+		colly.AllowedDomains("j2store.net"),
 
 	)
-	c.OnHTML("div[moria-ProductCard-joawUM cqPuXj sz7amsy3dwb]", func(h *colly.HTMLElement){
-		fmt.Println(h.Text)
+	var items []item
+
+	c.OnHTML("div.col-sm-9 div[itemprop=itemListElement]", func(h *colly.HTMLElement){
+		item := item{
+			Name: h.ChildText("h2.product-title"),
+			Price:h.ChildText("div.sale-price"),
+			ImgUrl:h.ChildAttr("img","src"),
+		}
+		items = append(items , item)
 
 	})
-    c.Visit("https://www.hepsiburada.com/iphone-14-pro-max-c-80857057")
+	c.OnHTML("[title=Next]",func(h *colly.HTMLElement){
+		next_page := h.Request.AbsoluteURL(h.Attr("href"))
+		c.Visit(next_page)
+
+	})
+	c.OnRequest(func(r *colly.Request){
+		fmt.Println(r.URL.String())
+	})
+
+    c.Visit("http://j2store.net/demo/index.php/shop")
+
+	content , err := json.Marshal(items)
+
+	if err != nil{
+		fmt.Println(err.Error())
+	}
+
+	os.WriteFile("products.json",content,0644)
+
+
     
 }
